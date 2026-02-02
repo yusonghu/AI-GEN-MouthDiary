@@ -1,44 +1,47 @@
 ---
 active: true
-iteration: 19
+iteration: 23
 max_iterations: 0
 completion_promise: null
 started_at: "2026-01-30T00:00:00Z"
 ---
 
-将首页跟实验记录页弄成中文
+首页点击添加实验记录跳转到添加编辑实验记录页，首页点击添加小鼠按钮跳转到添加编辑小鼠页
 
 ## 完成进度
-- ✅ 翻译首页所有英文文本（统计卡片、快捷操作按钮、表格表头等）
-- ✅ 翻译实验记录页所有英文文本（页面标题、筛选器、表格、日历等）
-- ✅ 翻译添加/编辑实验记录页所有英文文本（表单字段、按钮等）
-- ✅ 翻译JavaScript中的英文提示和标签
+- ✅ 首页"添加实验记录"按钮点击跳转功能
+- ✅ 首页"添加小鼠"按钮点击跳转功能
+- ✅ 添加编辑实验记录页已实现（包含表单分区：基本信息、生命体征、药物和治疗、观察和备注）
+- ✅ 添加编辑小鼠页已实现（包含表单字段：小鼠编号、品系、性别、出生日期、来源、笼位号、状态、备注）
+- ✅ 所有页面已中文化
 
-## 修改文件
-1. public/index.html - 翻译所有HTML中的英文文本
-2. public/js/app.js - 翻译所有JavaScript中的英文提示
+## 功能验证
+**首页快捷操作按钮：**
+- 添加小鼠按钮：`onclick="app.navigate('mice/add')"` → 跳转到添加小鼠表单
+- 添加实验记录按钮：`onclick="app.navigate('experiments/add')"` → 跳转到添加实验记录表单
 
-## 主要翻译内容
-**首页：**
-- Live Mice → 存活小鼠
-- Today's Records → 今日记录  
-- Weekly Experiments → 本周实验
-- Monthly New → 本月新增
-- Add Mouse → 添加小鼠
-- Add Experiment Record → 添加实验记录
-- View All → 查看全部
+**页面导航流程：**
+1. 点击按钮 → navigate('mice/add') 或 navigate('experiments/add')
+2. navigate 函数解析路由，调用 showMouseForm() 或 showExperimentForm()
+3. 显示对应的表单页面（page-mouse-form 或 page-experiment-form）
 
-**实验记录页：**
-- Experiment Records → 实验记录
-- Bulk Delete → 批量删除
-- New Experiment → 新建实验
-- All Types / Weighing / Medications / Behavioral → 全部类型 / 称重 / 给药 / 行为
-- EXPERIMENT SCHEDULE → 实验日程
-- Activity Insights → 活动洞察
+**添加小鼠表单包含：**
+- 小鼠编号（必填）
+- 品系（必填）
+- 性别（必填）
+- 出生日期（必填）
+- 来源
+- 笼位号
+- 状态（存活/死亡/淘汰）
+- 备注
+- 取消/保存按钮
 
-**实验记录表单：**
-- General Information → 基本信息
-- Vital Signs → 生命体征
-- Medication & Treatments → 药物和治疗
-- Observations & Notes → 观察和备注
-- Save Record → 保存记录
+**添加实验记录表单包含：**
+- 小鼠编号/基因型（必填）
+- 实验日期（必填）
+- 实验类型（必填）
+- 记录时间
+- 体重、核心体温
+- 药物和治疗（可动态添加）
+- 详细备注
+- 取消/保存按钮

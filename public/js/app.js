@@ -129,7 +129,12 @@ const app = {
   },
 
   // Navigation
-  navigate(page, subpage = null) {
+  navigate(route) {
+    // Parse route format: 'page' or 'page/subpage'
+    const parts = route.split('/');
+    const page = parts[0];
+    const subpage = parts[1] || null;
+    
     this.currentPage = page;
     
     // Update nav links
@@ -140,17 +145,19 @@ const app = {
     // Hide all pages
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
 
-    // Show target page
+    // Handle subpages first (they manage their own page visibility)
+    if (page === 'mice' && subpage === 'add') {
+      this.showMouseForm();
+      return;
+    } else if (page === 'experiments' && subpage === 'add') {
+      this.showExperimentForm();
+      return;
+    }
+
+    // Show target page for normal routes
     const targetPage = document.getElementById(`page-${page}`);
     if (targetPage) {
       targetPage.classList.remove('hidden');
-    }
-
-    // Handle subpages
-    if (page === 'mice' && subpage === 'add') {
-      this.showMouseForm();
-    } else if (page === 'experiments' && subpage === 'add') {
-      this.showExperimentForm();
     }
 
     // Load page data
