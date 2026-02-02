@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小鼠日记本 - Mouse Diary</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/experiments.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="navbar-brand" onclick="app.navigate('dashboard')" style="cursor: pointer;">小鼠日记本</div>
+    <ul class="navbar-nav">
+      <li><a href="#dashboard" class="nav-link active" data-page="dashboard">首页</a></li>
+      <li><a href="#mice" class="nav-link" data-page="mice">小鼠管理</a></li>
+      <li><a href="#experiments" class="nav-link" data-page="experiments">实验记录</a></li>
+      <li><a href="#stats" class="nav-link" data-page="stats">数据统计</a></li>
+      <li><a href="#export" class="nav-link" data-page="export">导出数据</a></li>
+    </ul>
+    <div id="current-date" style="color: #757575; font-size: 14px;"></div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- Dashboard Page -->
+    <div id="page-dashboard" class="page">
+      <!-- Stats Cards -->
+      <div class="dashboard-stats">
+        <div class="dashboard-stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">存活小鼠</span>
+            <div class="stat-card-icon blue">🐭</div>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-value" id="stat-alive">0</div>
+            <div class="stat-card-trend up">
+              <span class="trend-arrow">↑</span>
+              <span class="trend-value">+2%</span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">今日记录</span>
+            <div class="stat-card-icon blue">📝</div>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-value" id="stat-today">0</div>
+            <div class="stat-card-trend up">
+              <span class="trend-arrow">↑</span>
+              <span class="trend-value">+4%</span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">本周实验</span>
+            <div class="stat-card-icon blue">📊</div>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-value" id="stat-week">0</div>
+            <div class="stat-card-trend down">
+              <span class="trend-arrow">↓</span>
+              <span class="trend-value">-1%</span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">本月新增</span>
+            <div class="stat-card-icon blue">➕</div>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-value" id="stat-month-new">0</div>
+            <div class="stat-card-trend up">
+              <span class="trend-arrow">↑</span>
+              <span class="trend-value">+12%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="dashboard-quick-actions">
+        <button class="quick-action-card primary" onclick="app.navigate('mice/add')">
+          <div class="quick-action-icon">
+            <span class="icon-bg">+</span>
+          </div>
+          <div class="quick-action-content">
+            <div class="quick-action-title">添加小鼠</div>
+            <div class="quick-action-desc">注册新实验室小鼠</div>
+          </div>
+        </button>
+        <button class="quick-action-card secondary" onclick="app.navigate('experiments/add')">
+          <div class="quick-action-icon">
+            <span class="icon-bg secondary">📝</span>
+          </div>
+          <div class="quick-action-content">
+            <div class="quick-action-title">添加实验记录</div>
+            <div class="quick-action-desc">记录实验数据和观察</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Recent Experiments -->
+      <div class="dashboard-card">
+        <div class="dashboard-card-header">
+          <h3 class="dashboard-card-title">最近实验记录</h3>
+          <a href="#experiments" class="view-all-link" onclick="app.navigate('experiments')">查看全部 →</a>
+        </div>
+        <div class="dashboard-table-container">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>小鼠编号</th>
+                <th>类型</th>
+                <th>体重</th>
+                <th>操作人</th>
+              </tr>
+            </thead>
+            <tbody id="recent-experiments">
+              <tr><td colspan="5" class="text-center">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mice Management Page -->
+    <div id="page-mice" class="page hidden">
+      <div class="page-title">
+        <span>小鼠管理</span>
+        <button class="btn btn-primary" onclick="app.navigate('mice/add')">
+          <span>+</span> 添加小鼠
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" id="mice-search" placeholder="搜索小鼠编号、品系、笼位...">
+        </div>
+
+        <div class="filter-bar">
+          <select class="filter-select" id="filter-status">
+            <option value="">全部状态</option>
+            <option value="存活">存活</option>
+            <option value="死亡">死亡</option>
+            <option value="淘汰">淘汰</option>
+          </select>
+          <select class="filter-select" id="filter-gender">
+            <option value="">全部性别</option>
+            <option value="雄性">雄性</option>
+            <option value="雌性">雌性</option>
+          </select>
+          <select class="filter-select" id="filter-strain">
+            <option value="">全部品系</option>
+            <option value="C57BL/6">C57BL/6</option>
+            <option value="BALB/c">BALB/c</option>
+            <option value="ICR">ICR</option>
+            <option value="SD">SD</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="app.resetMiceFilters()">重置筛选</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all-mice"></th>
+                <th>编号</th>
+                <th>品系</th>
+                <th>性别</th>
+                <th>出生日期</th>
+                <th>年龄</th>
+                <th>状态</th>
+                <th>笼位</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="mice-table-body">
+              <tr><td colspan="9" class="text-center">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination" id="mice-pagination"></div>
+      </div>
+    </div>
+
+    <!-- Mouse Detail Page -->
+    <div id="page-mouse-detail" class="page hidden">
+      <div class="flex-between mb-2">
+        <button class="btn btn-secondary" onclick="app.navigate('mice')">← 返回列表</button>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" onclick="app.editCurrentMouse()">编辑信息</button>
+          <button class="btn btn-primary" onclick="app.addExperimentForMouse()">添加记录</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" id="mouse-detail-title">🐭 小鼠详情</span>
+        </div>
+        <div class="info-grid" id="mouse-detail-info"></div>
+        <div class="mt-2" id="mouse-detail-notes"></div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">体重变化趋势</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="weight-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">实验记录时间轴</span>
+          </div>
+          <div class="timeline" id="mouse-timeline"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mouse Form Page -->
+    <div id="page-mouse-form" class="page hidden">
+      <div class="flex-between mb-2">
+        <button class="btn btn-secondary" onclick="app.goBack()">← 返回</button>
+      </div>
+
+      <div class="card form-container">
+        <div class="card-header">
+          <span class="card-title" id="mouse-form-title">添加新小鼠</span>
+        </div>
+
+        <form id="mouse-form">
+          <input type="hidden" id="mouse-id">
+
+          <div class="form-group">
+            <label class="form-label">小鼠编号 <span class="required">*</span></label>
+            <input type="text" class="form-control" id="mouse-code" required>
+            <div class="form-help">请输入唯一的小鼠编号，如：M001、C57-001</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">品系 <span class="required">*</span></label>
+            <select class="form-control form-select" id="mouse-strain" required>
+              <option value="">请选择品系</option>
+              <option value="C57BL/6">C57BL/6</option>
+              <option value="BALB/c">BALB/c</option>
+              <option value="ICR">ICR</option>
+              <option value="SD">SD (Sprague-Dawley)</option>
+              <option value="Wistar">Wistar</option>
+              <option value="KM">KM (昆明小鼠)</option>
+              <option value="other">其他（请在备注中注明）</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">性别 <span class="required">*</span></label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="gender" value="雄性" required> 雄性 ♂
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="gender" value="雌性" required> 雌性 ♀
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">出生日期 <span class="required">*</span></label>
+            <input type="date" class="form-control" id="mouse-birth-date" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">来源</label>
+            <input type="text" class="form-control" id="mouse-source" placeholder="如：Jackson Laboratory">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">笼位号</label>
+            <input type="text" class="form-control" id="mouse-cage" placeholder="如：A01">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">状态</label>
+            <select class="form-control form-select" id="mouse-status">
+              <option value="存活">存活</option>
+              <option value="死亡">死亡</option>
+              <option value="淘汰">淘汰</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="mouse-notes" rows="4" placeholder="请输入备注信息..."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="app.goBack()">取消</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Experiments Page -->
+    <div id="page-experiments" class="page hidden">
+      <!-- Page Header -->
+      <div class="experiments-header">
+        <div class="experiments-title-section">
+          <h1 class="experiments-main-title">实验记录</h1>
+          <p class="experiments-subtitle">跟踪和管理所有实验室小鼠实验记录</p>
+        </div>
+        <div class="experiments-actions">
+          <button class="btn btn-danger" id="batch-delete-btn" onclick="app.batchDeleteExperiments()" disabled>
+            <span>🗑</span> 批量删除
+          </button>
+          <button class="btn btn-primary" onclick="app.navigate('experiments/add')">
+            <span>+</span> 新建实验
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="card filter-card">
+        <div class="experiments-filter-bar">
+          <div class="date-range-group">
+            <div class="date-input-wrapper">
+              <span class="date-icon">📅</span>
+              <input type="date" class="filter-date-input" id="exp-start-date" placeholder="开始日期（例如：2023）">
+            </div>
+            <span class="date-separator">至</span>
+            <div class="date-input-wrapper">
+              <span class="date-icon">📅</span>
+              <input type="date" class="filter-date-input" id="exp-end-date" placeholder="结束日期（例如：2023）">
+            </div>
+          </div>
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="exp-search" placeholder="搜索小鼠编号或操作人...">
+          </div>
+          <div class="type-filter-buttons">
+            <button class="type-filter-btn active" data-type="">全部类型</button>
+            <button class="type-filter-btn" data-type="日常称重">称重</button>
+            <button class="type-filter-btn" data-type="给药">给药</button>
+            <button class="type-filter-btn" data-type="行为测试">行为</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <div class="card table-card">
+        <div class="table-container">
+          <table class="data-table experiments-table">
+            <thead>
+              <tr>
+                <th class="checkbox-col"><input type="checkbox" id="select-all-experiments"></th>
+                <th>日期和时间</th>
+                <th>小鼠编号</th>
+                <th>实验类型</th>
+                <th>体重(g)</th>
+                <th>操作人</th>
+                <th class="actions-col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="experiments-table-body">
+              <tr><td colspan="7" class="text-center">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+          <div class="rows-per-page">
+            <span>显示</span>
+            <select class="rows-select" id="exp-rows-per-page">
+              <option value="25">25行</option>
+              <option value="50">50行</option>
+              <option value="100">100行</option>
+            </select>
+          </div>
+          <div class="pagination" id="experiments-pagination"></div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Calendar & Insights -->
+      <div class="experiments-bottom-section">
+        <!-- Experiment Schedule Calendar -->
+        <div class="card calendar-card">
+          <div class="calendar-header">
+            <h3 class="section-title">实验日程</h3>
+            <a href="#" class="view-full-link">查看完整</a>
+          </div>
+          <div class="calendar-nav">
+            <h4 class="calendar-month">2023年10月</h4>
+            <div class="calendar-nav-buttons">
+              <button class="calendar-nav-btn" onclick="app.prevCalendarMonth()">‹</button>
+              <button class="calendar-nav-btn" onclick="app.nextCalendarMonth()">›</button>
+            </div>
+          </div>
+          <div class="calendar-grid">
+            <div class="calendar-weekdays">
+              <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+            <div class="calendar-days" id="experiment-calendar">
+              <!-- Calendar days will be populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Insights -->
+        <div class="card insights-card">
+          <div class="insights-content">
+            <div class="insights-icon">📊</div>
+            <div class="insights-text">
+              <h3 class="insights-title">活动洞察</h3>
+              <p class="insights-description">
+                本周实验量增加了12%。Sarah Jenkins记录了最多的活动（42条日志）。
+              </p>
+              <a href="#" class="download-report-link" onclick="app.downloadWeeklyReport()">
+                下载周报(PDF)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Experiment Form Page -->
+    <div id="page-experiment-form" class="page hidden">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="#" onclick="app.navigate('experiments')">实验记录</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current" id="experiment-breadcrumb-title">新建记录</span>
+      </nav>
+
+      <!-- Page Title -->
+      <div class="experiment-form-header">
+        <h1 class="experiment-form-title" id="experiment-form-title">新建实验记录</h1>
+        <p class="experiment-form-subtitle">记录日常生命体征和给药管理数据</p>
+      </div>
+
+      <form id="experiment-form" class="experiment-form">
+        <input type="hidden" id="experiment-id">
+
+        <!-- General Information Section -->
+        <div class="form-section">
+          <h2 class="form-section-title">基本信息</h2>
+          <div class="form-section-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">小鼠编号/基因型 <span class="required">*</span></label>
+                <div class="searchable-select">
+                  <input type="text" class="form-control" id="exp-mouse-search" placeholder="选择或搜索小鼠..." readonly>
+                  <span class="select-arrow">🔽</span>
+                  <div class="select-dropdown" id="exp-mouse-dropdown">
+                    <!-- Mouse options will be populated by JS -->
+                  </div>
+                </div>
+                <input type="hidden" id="exp-mouse-id" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">实验日期 <span class="required">*</span></label>
+                <div class="date-input-wrapper">
+                  <input type="date" class="form-control" id="exp-date" required>
+                  <span class="date-picker-icon">📅</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">实验类型 <span class="required">*</span></label>
+                <div class="searchable-select">
+                  <select class="form-control form-select" id="exp-type" required>
+                    <option value="日常称重">日常称重</option>
+                    <option value="给药">给药</option>
+                    <option value="行为测试">行为测试</option>
+                    <option value="采血">采血</option>
+                    <option value="解剖">解剖</option>
+                  </select>
+                  <span class="select-arrow">🔽</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">记录时间</label>
+                <div class="time-input-wrapper">
+                  <input type="time" class="form-control" id="exp-time" value="09:00">
+                  <span class="time-icon">🕐</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vital Signs Section -->
+        <div class="form-section">
+          <h2 class="form-section-title">生命体征</h2>
+          <div class="form-section-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">体重</label>
+                <div class="input-with-unit">
+                  <input type="number" class="form-control" id="exp-weight" step="0.1" placeholder="0.0">
+                  <span class="unit-label">g</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">核心体温</label>
+                <div class="input-with-unit">
+                  <input type="number" class="form-control" id="exp-temp" step="0.1" placeholder="37.0">
+                  <span class="unit-label">°C</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medication & Treatments Section -->
+        <div class="form-section">
+          <div class="section-header-with-action">
+            <h2 class="form-section-title">药物和治疗</h2>
+            <button type="button" class="btn btn-text" onclick="app.addMedicationRow()">
+              <span class="add-icon">+</span> 添加药物
+            </button>
+          </div>
+          <div class="form-section-content">
+            <div class="medication-list" id="medication-list">
+              <!-- Medication rows will be added here dynamically -->
+<div class="medication-row">
+              <div class="medication-field">
+                <label class="field-label">药物名称</label>
+                <input type="text" class="form-control" name="medication-name[]" placeholder="例如：氯胺酮">
+              </div>
+              <div class="medication-field">
+                <label class="field-label">剂量</label>
+                <input type="text" class="form-control" name="medication-dosage[]" placeholder="50">
+              </div>
+              <div class="medication-field">
+                <label class="field-label">给药途径</label>
+                <div class="searchable-select">
+                  <select class="form-control form-select" name="medication-route[]">
+                    <option value="Intraperitoneal (IP)">腹腔注射 (IP)</option>
+                    <option value="Subcutaneous (SC)">皮下注射 (SC)</option>
+                    <option value="Intravenous (IV)">静脉注射 (IV)</option>
+                    <option value="Oral (PO)">口服 (PO)</option>
+                  </select>
+                  <span class="select-arrow">🔽</span>
+                </div>
+              </div>
+              <button type="button" class="remove-medication-btn" onclick="app.removeMedicationRow(this)">🗑️</button>
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Observations & Notes Section -->
+        <div class="form-section">
+          <h2 class="form-section-title">观察和备注</h2>
+          <div class="form-section-content">
+            <div class="form-group">
+              <label class="form-label">详细备注</label>
+              <textarea class="form-control" id="exp-notes" rows="5" placeholder="记录任何异常行为、反应或身体发现..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions-bar">
+          <button type="button" class="btn btn-text" onclick="app.goBack()">取消</button>
+          <div class="form-actions-right">
+            <button type="submit" class="btn btn-outline" name="action" value="continue">
+              保存并添加另一个
+            </button>
+            <button type="submit" class="btn btn-primary" name="action" value="save">
+              <span class="btn-icon">✓</span> 保存记录
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Statistics Page -->
+    <div id="page-stats" class="page hidden">
+      <div class="page-title">
+        <span>数据统计</span>
+      </div>
+
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-icon">🐭</div>
+          <div class="stat-value" id="stats-total">0</div>
+          <div class="stat-label">总小鼠数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color: #4CAF50;">✓</div>
+          <div class="stat-value" id="stats-alive" style="color: #4CAF50;">0</div>
+          <div class="stat-label">存活数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color: #F44336;">✕</div>
+          <div class="stat-value" id="stats-dead" style="color: #F44336;">0</div>
+          <div class="stat-label">死亡数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-value" id="stats-month-exp">0</div>
+          <div class="stat-label">本月实验</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">品系分布</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="strain-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">性别比例</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="gender-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">实验类型分布</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="exp-type-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">月度实验趋势</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="monthly-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Page -->
+    <div id="page-export" class="page hidden">
+      <div class="page-title">
+        <span>数据导出</span>
+      </div>
+
+      <div class="card">
+        <div class="section-title">导出条件</div>
+
+        <div class="form-group">
+          <label class="form-label">日期范围</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="date-range" value="all" checked> 全部时间
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="date-range" value="month"> 本月
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="date-range" value="custom"> 自定义范围
+            </label>
+          </div>
+          <div id="custom-date-range" class="flex gap-2 mt-2" style="display: none;">
+            <input type="date" class="form-control" id="export-start-date">
+            <span style="align-self: center;">至</span>
+            <input type="date" class="form-control" id="export-end-date">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">小鼠筛选</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="mouse-filter" value="all" checked> 全部小鼠
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="mouse-filter" value="specific"> 指定小鼠
+            </label>
+          </div>
+          <div id="specific-mice-select" class="mt-2" style="display: none;">
+            <select class="form-control" id="export-mice" multiple style="height: 120px;">
+            </select>
+            <div class="form-help">按住 Ctrl 键可选择多个小鼠</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">实验类型</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="select-all-types" checked> 全部类型
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="exp-type-checkbox" value="日常称重" checked> 日常称重
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="exp-type-checkbox" value="给药" checked> 给药
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="exp-type-checkbox" value="行为测试" checked> 行为测试
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="exp-type-checkbox" value="采血" checked> 采血
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="exp-type-checkbox" value="解剖" checked> 解剖
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">导出格式</label>
+          <div class="export-options">
+            <div class="export-format-card selected">
+              <div class="export-format-icon">📊</div>
+              <div class="export-format-name">Excel 表格</div>
+              <input type="radio" name="export-format" value="excel" checked style="display: none;">
+            </div>
+            <div class="export-format-card">
+              <div class="export-format-icon">📄</div>
+              <div class="export-format-name">PDF 报告</div>
+              <input type="radio" name="export-format" value="pdf" style="display: none;">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary btn-lg" onclick="app.exportData()" style="width: 200px;">
+            导出数据
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">导出历史</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>文件名</th>
+                <th>格式</th>
+                <th>记录数</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="export-history">
+              <tr><td colspan="5" class="text-center">暂无导出记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Delete Confirmation -->
+    <div class="modal-overlay" id="delete-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">⚠️ 确认删除</span>
+          <button class="modal-close" onclick="app.closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <p id="delete-message">确定要删除吗？此操作不可恢复。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="app.closeModal()">取消</button>
+          <button class="btn btn-danger" id="confirm-delete-btn">删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alert-container"></div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

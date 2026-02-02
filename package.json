@@ -1,0 +1,31 @@
+{
+  "name": "mouse-diary",
+  "version": "1.0.0",
+  "description": "小鼠日记本 - Laboratory Mouse Management System",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "nodemon server/app.js",
+    "init-db": "node server/database.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "xlsx": "^0.18.5",
+    "pdfkit": "^0.13.0",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "mouse",
+    "laboratory",
+    "management",
+    "diary",
+    "experiment"
+  ],
+  "author": "Lab Research Team",
+  "license": "MIT"
+}
