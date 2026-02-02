@@ -3,6 +3,52 @@ const router = express.Router();
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
 const { getDatabase } = require('../database');
+const path = require('path');
+const fs = require('fs');
+
+// Helper function to encode filename for Content-Disposition header
+function encodeFilename(filename) {
+  // Use RFC 5987 encoding for non-ASCII characters
+  const encoded = encodeURIComponent(filename);
+  return `filename="${filename.replace(/"/g, '"')}"; filename*=UTF-8''${encoded}`;
+}
+
+// Helper function to get Chinese font path
+function getChineseFontPath() {
+  // Check multiple possible font locations
+  const possiblePaths = [
+    // Project local fonts
+    path.join(__dirname, '..', 'fonts', 'NotoSansCJKsc-Regular.otf'),
+    path.join(__dirname, '..', 'fonts', 'NotoSansCJKsc-Regular.ttf'),
+    path.join(__dirname, '..', 'fonts', 'simhei.ttf'),
+    path.join(__dirname, '..', 'fonts', 'simsun.ttc'),
+    path.join(__dirname, '..', 'fonts', 'msyh.ttc'),
+    // Windows system fonts
+    'C:\\Windows\\Fonts\\simhei.ttf',
+    'C:\\Windows\\Fonts\\simsun.ttc',
+    'C:\\Windows\\Fonts\\msyh.ttc',
+    'C:\\Windows\\Fonts\\msyhbd.ttc',
+    // Linux system fonts
+    '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+    '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    // macOS system fonts
+    '/System/Library/Fonts/PingFang.ttc',
+    '/System/Library/Fonts/STHeiti Light.ttc',
+    '/Library/Fonts/Arial Unicode.ttf',
+  ];
+
+  for (const fontPath of possiblePaths) {
+    if (fs.existsSync(fontPath)) {
+      console.log('Found Chinese font:', fontPath);
+      return fontPath;
+    }
+  }
+
+  console.warn('No Chinese font found. PDF may display garbled text.');
+  console.warn('Please add a Chinese font file to server/fonts/ directory.');
+  return null;
+}
 
 // Export experiments to Excel
 router.post('/excel', (req, res) => {
@@ -53,9 +99,19 @@ router.post('/excel', (req, res) => {
     ORDER BY e.experiment_date DESC
   `;
 
+  console.log('Excel export query:', query);
+  console.log('Query params:', params);
+
   db.all(query, params, (err, rows) => {
     if (err) {
+      console.error('Database error:', err);
       return res.status(500).json({ error: err.message });
+    }
+
+    console.log(`Found ${rows.length} records for Excel export`);
+
+    if (rows.length === 0) {
+      console.warn('No data found for the given criteria');
     }
 
     const wb = XLSX.utils.book_new();
@@ -85,7 +141,7 @@ router.post('/excel', (req, res) => {
     const filename = `实验记录_${timestamp}.xlsx`;
     
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Disposition', `attachment; ${encodeFilename(filename)}`);
     
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.send(buffer);
@@ -132,69 +188,105 @@ router.post('/pdf', (req, res) => {
     ORDER BY e.experiment_date DESC
   `;
 
+  console.log('PDF export query:', query);
+  console.log('Query params:', params);
+
   db.all(query, params, (err, rows) => {
     if (err) {
+      console.error('Database error:', err);
       return res.status(500).json({ error: err.message });
     }
 
+    console.log(`Found ${rows.length} records for PDF export`);
+
+    // Get Chinese font path
+    const fontPath = getChineseFontPath();
+    
+    // Create PDF document
     const doc = new PDFDocument();
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const filename = `实验记录_${timestamp}.pdf`;
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Disposition', `attachment; ${encodeFilename(filename)}`);
     
     doc.pipe(res);
 
+    // Register Chinese font if available
+    if (fontPath) {
+      doc.registerFont('ChineseFont', fontPath);
+    }
+
+    // Helper function to set font with Chinese support
+    const setFont = (size) => {
+      if (fontPath) {
+        doc.font('ChineseFont').fontSize(size);
+      } else {
+        doc.fontSize(size);
+      }
+    };
+
     // Title
-    doc.fontSize(20).text('小鼠实验记录报告', { align: 'center' });
+    setFont(20);
+    doc.text('小鼠实验记录报告', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`生成日期: ${new Date().toLocaleDateString('zh-CN')}`, { align: 'center' });
+    setFont(12);
+    doc.text(`生成日期: ${new Date().toLocaleDateString('zh-CN')}`, { align: 'center' });
     doc.moveDown(2);
 
     // Summary
-    doc.fontSize(14).text('数据概览', { underline: true });
-    doc.fontSize(11).text(`总记录数: ${rows.length} 条`);
+    setFont(14);
+    doc.text('数据概览', { underline: true });
+    setFont(11);
+    doc.text(`总记录数: ${rows.length} 条`);
     doc.moveDown();
 
-    // Records
-    doc.fontSize(14).text('实验记录详情', { underline: true });
-    doc.moveDown();
+    if (rows.length === 0) {
+      setFont(11);
+      doc.text('未找到符合条件的实验记录。');
+    } else {
+      // Records
+      setFont(14);
+      doc.text('实验记录详情', { underline: true });
+      doc.moveDown();
 
-    rows.forEach((record, index) => {
-      if (index > 0) {
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-        doc.moveDown(0.5);
-      }
+      rows.forEach((record, index) => {
+        if (index > 0) {
+          doc.moveDown(0.5);
+          doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+          doc.moveDown(0.5);
+        }
 
-      doc.fontSize(11).text(`${record.experiment_date} - ${record.mouse_code} (${record.strain})`);
-      doc.fontSize(10).text(`实验类型: ${record.experiment_type}`, { indent: 20 });
-      
-      if (record.weight) {
-        doc.text(`体重: ${record.weight}g`, { indent: 20 });
-      }
-      if (record.temperature) {
-        doc.text(`体温: ${record.temperature}°C`, { indent: 20 });
-      }
-      if (record.medication) {
-        doc.text(`用药: ${record.medication} ${record.dosage || ''}`, { indent: 20 });
-      }
-      if (record.behavior_notes) {
-        doc.text(`行为观察: ${record.behavior_notes}`, { indent: 20 });
-      }
-      if (record.results) {
-        doc.text(`实验结果: ${record.results}`, { indent: 20 });
-      }
-      if (record.operator) {
-        doc.text(`操作人: ${record.operator}`, { indent: 20 });
-      }
+        setFont(11);
+        doc.text(`${record.experiment_date || 'N/A'} - ${record.mouse_code || 'N/A'} (${record.strain || 'N/A'})`);
+        setFont(10);
+        doc.text(`实验类型: ${record.experiment_type || 'N/A'}`, { indent: 20 });
+        
+        if (record.weight) {
+          doc.text(`体重: ${record.weight}g`, { indent: 20 });
+        }
+        if (record.temperature) {
+          doc.text(`体温: ${record.temperature}°C`, { indent: 20 });
+        }
+        if (record.medication) {
+          doc.text(`用药: ${record.medication} ${record.dosage || ''}`, { indent: 20 });
+        }
+        if (record.behavior_notes) {
+          doc.text(`行为观察: ${record.behavior_notes}`, { indent: 20 });
+        }
+        if (record.results) {
+          doc.text(`实验结果: ${record.results}`, { indent: 20 });
+        }
+        if (record.operator) {
+          doc.text(`操作人: ${record.operator}`, { indent: 20 });
+        }
 
-      // Add new page if needed
-      if (doc.y > 700 && index < rows.length - 1) {
-        doc.addPage();
-      }
-    });
+        // Add new page if needed
+        if (doc.y > 700 && index < rows.length - 1) {
+          doc.addPage();
+        }
+      });
+    }
 
     doc.end();
   });

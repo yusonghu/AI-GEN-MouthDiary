@@ -1,47 +1,39 @@
 ---
 active: true
-iteration: 23
+iteration: 31
 max_iterations: 0
 completion_promise: null
 started_at: "2026-01-30T00:00:00Z"
 ---
 
-首页点击添加实验记录跳转到添加编辑实验记录页，首页点击添加小鼠按钮跳转到添加编辑小鼠页
+小鼠管理->查看小鼠->编辑信息 不会跳新的页面 修复它，小鼠管理页面点击修修改小鼠信息，当没有进行上面描述的操作的时候，点击后页面不会跳转
 
-## 完成进度
-- ✅ 首页"添加实验记录"按钮点击跳转功能
-- ✅ 首页"添加小鼠"按钮点击跳转功能
-- ✅ 添加编辑实验记录页已实现（包含表单分区：基本信息、生命体征、药物和治疗、观察和备注）
-- ✅ 添加编辑小鼠页已实现（包含表单字段：小鼠编号、品系、性别、出生日期、来源、笼位号、状态、备注）
-- ✅ 所有页面已中文化
+## 修复完成
 
-## 功能验证
-**首页快捷操作按钮：**
-- 添加小鼠按钮：`onclick="app.navigate('mice/add')"` → 跳转到添加小鼠表单
-- 添加实验记录按钮：`onclick="app.navigate('experiments/add')"` → 跳转到添加实验记录表单
+### 问题原因
+`editCurrentMouse()` 函数不接受参数，只依赖 `this.currentMouseId`。但在小鼠管理页面的表格中，编辑按钮调用时传入了 `mouseId` 参数，导致：
+1. 直接在小鼠管理页面点击编辑时，传入的 mouseId 被忽略
+2. 只有在查看小鼠详情后（设置了 currentMouseId），编辑才能正常工作
 
-**页面导航流程：**
-1. 点击按钮 → navigate('mice/add') 或 navigate('experiments/add')
-2. navigate 函数解析路由，调用 showMouseForm() 或 showExperimentForm()
-3. 显示对应的表单页面（page-mouse-form 或 page-experiment-form）
+### 修复内容
+修改 `editCurrentMouse` 函数，使其接受 `mouseId` 参数：
 
-**添加小鼠表单包含：**
-- 小鼠编号（必填）
-- 品系（必填）
-- 性别（必填）
-- 出生日期（必填）
-- 来源
-- 笼位号
-- 状态（存活/死亡/淘汰）
-- 备注
-- 取消/保存按钮
+```javascript
+editCurrentMouse(mouseId = null) {
+  // 如果传入了 mouseId，使用传入的 ID，否则使用 currentMouseId
+  const id = mouseId || this.currentMouseId;
+  if (id) {
+    this.showMouseForm(id);
+  } else {
+    console.error('No mouse ID provided for editing');
+  }
+}
+```
 
-**添加实验记录表单包含：**
-- 小鼠编号/基因型（必填）
-- 实验日期（必填）
-- 实验类型（必填）
-- 记录时间
-- 体重、核心体温
-- 药物和治疗（可动态添加）
-- 详细备注
-- 取消/保存按钮
+### 修改文件
+- `public/js/app.js` - 第489行，修改 `editCurrentMouse` 函数
+
+### 功能验证
+现在小鼠管理页面的编辑按钮可以正常工作：
+1. 直接点击编辑按钮 → 传入 mouseId → 跳转到编辑页面
+2. 查看小鼠详情后点击编辑 → 使用 currentMouseId → 跳转到编辑页面

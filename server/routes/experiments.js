@@ -115,6 +115,24 @@ router.get('/:id', (req, res) => {
     if (!row) {
       return res.status(404).json({ error: 'Experiment not found' });
     }
+    
+    // Convert legacy medication fields to new medications array format
+    // Check if medication field exists and has content (not null/empty)
+    if ((row.medication || row.dosage) && !row.medications) {
+      row.medications = [{
+        name: row.medication || '',
+        dosage: row.dosage || '',
+        route: row.route || 'Intraperitoneal (IP)'
+      }];
+    } else if (!row.medications) {
+      row.medications = [];
+    }
+    
+    // Ensure notes field exists (map from behavior_notes if needed)
+    if (!row.notes && row.behavior_notes) {
+      row.notes = row.behavior_notes;
+    }
+    
     res.json(row);
   });
 });

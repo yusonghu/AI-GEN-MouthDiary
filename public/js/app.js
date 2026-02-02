@@ -318,7 +318,7 @@ const app = {
               <td>${mouse.cage_number || '-'}</td>
               <td class="table-actions">
                 <button class="action-btn" onclick="app.viewMouse(${mouse.id})" title="查看">👁</button>
-                <button class="action-btn" onclick="app.editMouse(${mouse.id})" title="编辑">✏️</button>
+                <button class="action-btn" onclick="app.editCurrentMouse(${mouse.id})" title="编辑">✏️</button>
                 <button class="action-btn" onclick="app.confirmDeleteMouse(${mouse.id})" title="删除">🗑</button>
               </td>
             </tr>
@@ -486,9 +486,13 @@ const app = {
     }
   },
 
-  editCurrentMouse() {
-    if (this.currentMouseId) {
-      this.showMouseForm(this.currentMouseId);
+  editCurrentMouse(mouseId = null) {
+    // 如果传入了 mouseId，使用传入的 ID，否则使用 currentMouseId
+    const id = mouseId || this.currentMouseId;
+    if (id) {
+      this.showMouseForm(id);
+    } else {
+      console.error('No mouse ID provided for editing');
     }
   },
 
@@ -698,6 +702,15 @@ const app = {
     this.loadExperiments();
   },
 
+  // Edit experiment - wrapper for showExperimentForm
+  editExperiment(expId) {
+    if (expId) {
+      this.showExperimentForm(expId);
+    } else {
+      console.error('No experiment ID provided for editing');
+    }
+  },
+
   // Experiment Form
   async showExperimentForm(expId = null, mouseId = null) {
     this.currentExperimentId = expId;
@@ -845,6 +858,9 @@ const app = {
   async loadExperimentForEdit(expId) {
     try {
       const exp = await this.api(`/experiments/${expId}`);
+      console.log('Loaded experiment data:', exp);
+      console.log('Medications:', exp.medications);
+      
       document.getElementById('experiment-id').value = exp.id;
       document.getElementById('exp-mouse-id').value = exp.mouse_id;
       
@@ -859,13 +875,29 @@ const app = {
       document.getElementById('exp-type').value = exp.experiment_type;
       document.getElementById('exp-weight').value = exp.weight || '';
       document.getElementById('exp-temp').value = exp.temperature || '';
-      document.getElementById('exp-notes').value = exp.notes || '';
+      document.getElementById('exp-notes').value = exp.notes || exp.behavior_notes || '';
       
-      // Load medications if any
-      if (exp.medications && exp.medications.length > 0) {
-        const list = document.getElementById('medication-list');
-        list.innerHTML = '';
-        exp.medications.forEach((med, index) => {
+      // Load medications - always reset first
+      const list = document.getElementById('medication-list');
+      list.innerHTML = '';
+      
+      // Check if medications exist and have data
+      let medications = exp.medications || [];
+      
+      // Fallback: if no medications array but has legacy fields, use them
+      if (medications.length === 0 && (exp.medication || exp.dosage)) {
+        medications = [{
+          name: exp.medication || '',
+          dosage: exp.dosage || '',
+          route: exp.route || 'Intraperitoneal (IP)'
+        }];
+      }
+      
+      console.log('Final medications to display:', medications);
+      
+      if (medications.length > 0) {
+        // Load existing medications
+        medications.forEach((med, index) => {
           const row = document.createElement('div');
           row.className = 'medication-row';
           row.innerHTML = `
@@ -893,6 +925,9 @@ const app = {
           `;
           list.appendChild(row);
         });
+      } else {
+        // Add empty medication row for new entries
+        this.addMedicationRow();
       }
     } catch (e) {
       console.error('Failed to load experiment:', e);
